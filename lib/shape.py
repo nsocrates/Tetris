@@ -51,7 +51,7 @@ class Shape(BaseShapeClass):
 
     @staticmethod
     def readjust_body(body):
-        """Readjusts the body closest to (0,0)
+        """Readjusts the body closest to top-left (0,0)
         """
         closest = math.inf
         closest_point = Point(0, 0)
@@ -83,10 +83,13 @@ class Shape(BaseShapeClass):
 
     @staticmethod
     def compute_skirt(body, width, height):
+        """Stores the lowest Y value for each X value."""
         skirt = [height] * width
         for p in body:
-            if skirt[p.x] > p.y:
-                skirt[p.x] = p.y
+            # Flip Y so that (0,0) is at bottom left
+            y = -p.y + 1
+            if skirt[p.x] > y:
+                skirt[p.x] = y
         return skirt
 
     @staticmethod

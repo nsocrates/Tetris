@@ -42,8 +42,11 @@ class Game:
 
     @property
     def frozen_board(self):
-        s = str(self.board)
-        return s if self.shape.current is None else s.replace(self.shape.color.upper(), ".")
+        stringified_board = str(self.board)
+        if self.shape.current is None:
+            return stringified_board
+
+        return stringified_board.replace(self.shape.color.upper(), ".")
 
     def receive_message(self, message, payload):
         strategy = self.strategies.get(message)
@@ -54,7 +57,7 @@ class Game:
 
     def board_from_stream(self, func):
         items = [func().split(" ") for _ in range(self.BOARD_HEIGHT)]
-        self.board.take(items)
+        self.board.replace(items)
 
     def spawn(self, name):
         shape = self.shape.get(name)

@@ -6,6 +6,21 @@ from .point import Point
 from .grid import Grid
 
 class Board():
+    """Representation of a Tetris board.
+
+    Attributes:
+        grid: type:Grid
+        width: Board width - type:int
+        height: Board height - type:int
+        widths: List representing the largest width for each row - type:list
+        heights: List representing the largest height for each column - type:list
+        largest_row: Index of the highest row with a filled block - type:int
+        is_committed: Current state of the board - type:bool
+        grid_backup: Grid backup - type:Grid
+        widths_backup: Widths backup - type:list
+        heights_backup: Heights backup - type:list
+    """
+
     PLACE_OK = "PLACE_OK"
     PLACE_OUT_BOUNDS = "PLACE_OUT_BOUNDS"
     PLACE_BAD = "PLACE_BAD"
@@ -31,9 +46,14 @@ class Board():
         return str(self.grid)
 
     def replace(self, matrix):
+        """Replaces the current board with a new board."""
         self.grid.replace(matrix)
+        self.widths = [0] * self.height
+        self.heights = [0] * self.width
+        self.count_blocks()
 
     def insert(self, shape, x, y, color=None):
+        """Attempts to place a shape at the specified coordinates."""
         color = color or shape.color.upper()
 
         if not self.is_committed:
@@ -43,6 +63,8 @@ class Board():
         self.backup()
 
         message = self.PLACE_OK
+        heights = [0] * self.width
+
         for coords in shape.body:
             px, py = coords + (x, y)
 
@@ -56,14 +78,21 @@ class Board():
 
             self.grid.set(px, py, color)
             self.widths[py] += 1
-            self.heights[px] += 1
+
+            adjusted_y = 0 if coords.y == 1 else 1
+            if heights[px] < adjusted_y + 1:
+                heights[px] = adjusted_y + 1
 
             if self.widths[py] == self.width:
                 message = self.PLACE_ROW_FILLED
 
+        for i in range(len(heights)):
+            self.heights[i] += heights[i]
+
         return self.dispatch(message, shape, x, y)
 
     def count_blocks(self):
+        """Sets new values for largest_row, heights, and widths."""
         self.largest_row = 0
         for i in range(self.height):
             row = self.grid.get_row(i)
@@ -81,16 +110,19 @@ class Board():
                     self.largest_row = i
 
     def drop_height(self, shape, x):
-        result = 0
+        """Calculates the y value where the origin of a piece will come to rest if dropped."""
+        max_y = 0
+
         for i in range(len(shape.skirt)):
-            y = (self.heights[x + i] - shape.height) - shape.skirt[i]
+            offset_x = shape.body[i].x + x
+            y = self.heights[offset_x] - shape.height - shape.skirt[i]
+            if y > max_y:
+                max_y = y
 
-            if y > result:
-                result = y
-
-        return self.height - result - shape.height
+        return self.height - max_y - shape.height
 
     def clear_rows(self):
+        """Clears filled rows and shifts things down."""
         line_count = 0
         for i in (range(self.largest_row + 1)):
             if any([b == "." for b in self.grid.get_row(i)]):
@@ -105,28 +137,26 @@ class Board():
 
         return line_count
 
-    def take(self, matrix):
-        self.replace(matrix)
-        self.widths = [0] * self.height
-        self.heights = [0] * self.width
-        self.count_blocks()
-
     def backup(self):
+        """Creates a backup of the state of the current board."""
         self.grid_backup = self.grid.clone()
         self.widths_backup = deepcopy(self.widths)
         self.heights_backup = deepcopy(self.heights)
 
     def commit(self):
+        """Commits the current state of the board."""
         self.is_committed = True
 
-    def place_shape(self):
-        self.grid.save_tmp()
+    # def place_shape(self):
+    #     self.grid.save_tmp()
 
     def undo(self):
+        """Replaces the current state of the board with the previous state."""
         self.grid = self.grid_backup
         self.widths = self.widths_backup
         self.heights = self.heights_backup
         self.commit()
 
     def clear(self):
-       self.grid.clear()
+        """Resets the board."""
+        self.grid.clear()
